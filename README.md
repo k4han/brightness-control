@@ -27,70 +27,6 @@ A modern, lightweight Windows desktop application built with **Tauri v2**, **Rus
 
 ---
 
-## Architecture & How It Works
-
-```mermaid
-flowchart TD
-    UI[Frontend: TypeScript + Vite + HTML5] -->|Tauri IPC Invoke| Core[Rust Core: src-tauri]
-    Core -->|Check Display Type| Router{Display Type?}
-    Router -->|Internal Laptop| WMI[WMI via PowerShell CIM<br/>root/wmi: WmiMonitorBrightness]
-    Router -->|External Monitor| DDC[DDC/CI via Dxva2.dll<br/>HighLevel API & VCP Code 0x10]
-    Core -->|Sync State| Tray[System Tray & Flyout Panel]
-```
-
-1. **Internal Laptop Screens**:
-   - Uses Windows Management Instrumentation (`root/wmi: WmiMonitorBrightnessMethods`) via non-interactive PowerShell CIM calls, avoiding heavy COM marshalling dependencies while maintaining high compatibility across Windows builds.
-2. **External Monitors (DDC/CI)**:
-   - Enumerates physical monitors via `EnumDisplayMonitors` and `GetPhysicalMonitorsFromHMONITOR`.
-   - Probes high-level monitor configuration APIs (`GetMonitorBrightness` / `SetMonitorBrightness`) with fallback to low-level VCP feature codes (`0x10`).
-   - Caches communication modes to execute subsequent slider adjustments in a single fast DDC call without blocking UI responsiveness.
-
----
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) (LTS, v18+ recommended)
-- [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
-- [Rust](https://www.rust-lang.org/) (stable toolchain with MSVC support)
-- Windows 10 or Windows 11 with WebView2 Runtime
-
----
-
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/k4han/brightness-control.git
-cd brightness-control
-```
-
-### 2. Install dependencies
-
-```bash
-pnpm install
-```
-
-### 3. Run in Development Mode
-
-```bash
-pnpm tauri dev
-```
-
-### 4. Build & Package for Production
-
-```bash
-# Type check and build frontend
-pnpm build
-
-# Compile and package production installer (.msi / .exe)
-pnpm tauri build
-```
-
-The compiled binaries and installers will be located in `src-tauri/target/release/bundle/`.
-
----
-
 ## Troubleshooting & Tips
 
 - **External Monitor Not Responding to Brightness Changes?**
@@ -116,3 +52,11 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 ## License
 
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
+
+---
+
+## ☕ Support
+
+If you find this plugin helpful and want to support its development, consider buying me a coffee!
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/kh4n)
