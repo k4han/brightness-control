@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brightness Control — Modern Windows Screen Brightness App</title>
+  <meta name="description" content="Lightweight Windows screen brightness control application supporting internal laptop displays and external monitors via DDC/CI & WMI. Built with Tauri v2 and Rust." />
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --bg-card: rgba(18, 24, 38, 0.7);
+      --bg-card-hover: rgba(26, 35, 54, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(76, 194, 255, 0.25);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-rgb: 56, 189, 248;
+      --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      --badge-bg: rgba(56, 189, 248, 0.1);
+      --nav-bg: rgba(11, 15, 23, 0.85);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.45);
+      --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --bg-card-hover: rgba(255, 255, 255, 0.98);
+      --border: rgba(0, 0, 0, 0.08);
+      --border-glow: rgba(2, 132, 199, 0.3);
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-rgb: 2, 132, 199;
+      --accent-gradient: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+      --badge-bg: rgba(2, 132, 199, 0.08);
+      --nav-bg: rgba(248, 250, 252, 0.88);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Ambient Glow */
+    .glow-orb {
+      position: absolute;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 760px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(129, 140, 248, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-card);
+      border-color: var(--accent);
+    }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .btn-github:hover {
+      border-color: var(--text-muted);
+      transform: translateY(-1px);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 90px 0 60px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: var(--badge-bg);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.3rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.18;
+      margin-bottom: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span.gradient {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      background: var(--accent-gradient);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.05rem;
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.35);
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(56, 189, 248, 0.45);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .hero-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    /* Key Metrics / Highlights Bar */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto 30px;
+      padding: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 720px) {
+      .metrics-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .metric-item {
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .metric-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    /* Section Headings */
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-title h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Features Grid */
+    .features {
+      padding: 60px 0 90px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--badge-bg);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* FAQ */
+    .faq {
+      padding-bottom: 90px;
+    }
+
+    .faq-list {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .faq-item summary {
+      padding: 18px 22px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary::after {
+      content: '+';
+      font-size: 1.4rem;
+      color: var(--accent);
+    }
+
+    .faq-item[open] summary::after {
+      content: '−';
+    }
+
+    .faq-content {
+      padding: 0 22px 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    /* CTA Section */
+    .cta-banner {
+      background: var(--accent-gradient);
+      border-radius: 24px;
+      padding: 60px 40px;
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 80px;
+      box-shadow: 0 20px 40px rgba(56, 189, 248, 0.25);
+    }
+
+    .cta-banner h2 {
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .cta-banner p {
+      font-size: 1.15rem;
+      opacity: 0.92;
+      max-width: 600px;
+      margin: 0 auto 30px;
+    }
+
+    .cta-btn-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-white {
+      background: #ffffff;
+      color: #0f172a;
+      padding: 14px 30px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn-outline-white {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 14px 26px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-outline-white:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent);
+    }
+
+    @media (max-width: 680px) {
+      .nav-links {
+        display: none;
+      }
+      .footer-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-orb"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="brand">
+        <img src="icon.png" alt="Brightness Control Logo" onerror="this.style.display='none'" />
+        <span>Brightness Control</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#download">Download</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <!-- Theme Switcher -->
+        <button id="themeToggle" class="btn-icon" title="Toggle Light/Dark Theme" aria-label="Toggle theme">
+          <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg id="moonIcon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+
+        <!-- GitHub Repo Button -->
+        <a href="https://github.com/k4han/brightness-control" target="_blank" rel="noopener" class="btn-github">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>Star</span>
+          <span id="starCount" style="opacity:0.75; font-size:0.8rem;">GitHub</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        <span>New Release — Powered by Tauri v2 & Rust</span>
+      </div>
+
+      <h1>
+        Windows Screen Brightness<br>
+        <span class="gradient">Precise, Fast & Seamless</span>
+      </h1>
+
+      <p class="hero-desc">
+        True hardware-level brightness control for both internal laptop panels (WMI) and external monitors (DDC/CI). Engineered with Windows 11 Fluent UI and instant system tray flyout access.
+      </p>
+
+      <div class="hero-cta">
+        <a id="downloadBtn" href="https://github.com/k4han/brightness-control/releases/latest" class="btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="downloadBtnText">Download for Windows (v0.1.0)</span>
+        </a>
+
+        <a href="https://github.com/k4han/brightness-control" target="_blank" rel="noopener" class="btn-secondary">
+          <span>View on GitHub</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <div class="hero-meta">
+        <span>Requires: Windows 10 (1809+) or Windows 11 • Ultra-lightweight ~6MB • 100% Free & Open Source (MIT)</span>
+      </div>
+
+      <!-- Quick Highlights Bar -->
+      <div class="metrics-bar">
+        <div class="metric-item">
+          <div class="metric-val">DDC/CI + WMI</div>
+          <div class="metric-label">True Hardware Control</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">&lt; 12 MB</div>
+          <div class="metric-label">Ultra-Low RAM Footprint</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">Fluent UI</div>
+          <div class="metric-label">Windows 11 Native Aesthetic</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">100% MIT</div>
+          <div class="metric-label">Free & Open Source</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>Engineered for Clarity & Control</h2>
+        <p>No artificial software dimming overlays. Brightness Control communicates directly with your display hardware controller.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔌</div>
+          <h3>DDC/CI & WMI Hardware Control</h3>
+          <p>Seamlessly control internal laptop displays via native WMI and external monitors over HDMI / DisplayPort via the DDC/CI standard (VCP code 0x10).</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Rust & Tauri v2 Engine</h3>
+          <p>Launches instantly with an exceptionally small footprint (~8–12MB RAM in the background). Completely free of heavy Chromium or Electron bloat.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>Windows 11 Fluent UI</h3>
+          <p>Matches Windows 11 with subtle Mica/Acrylic translucency, smooth slider curves, and automatic system Light & Dark mode adaptation.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📌</div>
+          <h3>Smart System Tray Flyout</h3>
+          <p>Click the system tray icon to reveal a sleek quick-slider panel modeled after the native Windows 11 volume and brightness flyouts.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎛️</div>
+          <h3>Unified Master Slider</h3>
+          <p>Automatically activates when two or more displays are connected, letting you synchronize brightness across your entire workspace in one drag.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Black-Screen Protection</h3>
+          <p>Enforces a 10% minimum brightness floor so you never accidentally dim a screen to total darkness with no way to navigate back.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq" id="faq">
+    <div class="container">
+      <div class="section-title">
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about compatibility, setup, and features.</p>
+      </div>
+
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary>Why is my external monitor not responding to brightness changes?</summary>
+          <div class="faq-content">
+            1. <strong>Enable DDC/CI in OSD:</strong> Open your monitor's On-Screen Display (OSD) menu using its physical buttons, locate the <strong>DDC/CI</strong> setting, and ensure it is turned <strong>On</strong>.<br>
+            2. <strong>Check Video Cable:</strong> Connect your monitor directly via HDMI or DisplayPort. Some low-quality USB-C hubs, docking stations, or KVM switches filter out DDC/CI I2C signals.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Can the app automatically launch when Windows boots?</summary>
+          <div class="faq-content">
+            Yes! You can enable "Start with Windows" in the Settings panel. When enabled, the application starts quietly minimized in your system tray without interrupting your startup routine.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>What keyboard shortcuts and presets are supported?</summary>
+          <div class="faq-content">
+            - <strong>F5</strong>: Rescan and refresh connected displays.<br>
+            - <strong>Esc</strong>: Minimize immediately to the system tray.<br>
+            - Quick preset buttons (<strong>25%</strong>, <strong>50%</strong>, <strong>75%</strong>, <strong>100%</strong>) and <strong>±5%</strong> stepper buttons on each display card.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Is Brightness Control safe and free to use?</summary>
+          <div class="faq-content">
+            Yes, Brightness Control is 100% free and open-source under the permissive MIT License. There are zero ads, telemetry trackers, or external data collection. The entire codebase is transparent and inspectable on GitHub.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section class="container" id="download">
+    <div class="cta-banner">
+      <h2>Ready to optimize your viewing comfort?</h2>
+      <p>Download Brightness Control today and enjoy smooth, hardware-accurate multi-monitor control designed for Windows 11.</p>
+      <div class="cta-btn-group">
+        <a href="https://github.com/k4han/brightness-control/releases/latest" class="btn-white">
+          Download for Windows
+        </a>
+        <a href="https://buymeacoffee.com/kh4n" target="_blank" rel="noopener" class="btn-outline-white">
+          ☕ Buy Me A Coffee
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <div>
+        <strong>Brightness Control</strong> — Crafted by <a href="https://github.com/k4han" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none;">k4han</a>.
+        <div style="font-size:0.8rem; margin-top:4px;">Distributed under the MIT License.</div>
+      </div>
+
+      <ul class="footer-links">
+        <li><a href="https://github.com/k4han/brightness-control" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/k4han/brightness-control/releases" target="_blank" rel="noopener">Releases</a></li>
+        <li><a href="https://github.com/k4han/brightness-control/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://buymeacoffee.com/kh4n" target="_blank" rel="noopener">Buy Me A Coffee</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <!-- Theme Logic & GitHub Release API Integration -->
+  <script>
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggle');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      } else {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      }
+    }
+
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Live GitHub Release & Stars API integration
+    async function fetchGitHubData() {
+      try {
+        const repoRes = await fetch('https://api.github.com/repos/k4han/brightness-control');
+        if (repoRes.ok) {
+          const repoData = await repoRes.json();
+          if (repoData.stargazers_count !== undefined) {
+            document.getElementById('starCount').textContent = `★ ${repoData.stargazers_count}`;
+          }
+        }
+
+        const relRes = await fetch('https://api.github.com/repos/k4han/brightness-control/releases/latest');
+        if (relRes.ok) {
+          const relData = await relRes.json();
+          if (relData.tag_name) {
+            document.getElementById('downloadBtnText').textContent = `Download for Windows (${relData.tag_name})`;
+          }
+        }
+      } catch (err) {
+        console.log('GitHub API offline or rate-limited, using defaults.');
+      }
+    }
+
+    fetchGitHubData();
+  </script>
+</body>
+</html>
