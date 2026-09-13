@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for main and flyout windows",
+  "windows": ["main", "flyout"],
+  "permissions": [
+    "core:default"
+  ]
+}
