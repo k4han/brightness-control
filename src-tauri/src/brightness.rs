@@ -142,8 +142,8 @@ fn query_wmi_brightness() -> Result<u32, String> {
         }
     }
 
-    // Fallback: PowerShell script. Select first active instance. Desktop PCs do not have WMI brightness -> outputs empty.
-    let script = "(Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness | Where-Object { $_.Active } | Select-Object -First 1).CurrentBrightness";
+    // Fallback: PowerShell script. Select first active instance (or first available instance if Active is omitted).
+    let script = "$b = (Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue | Where-Object { $_.Active } | Select-Object -First 1); if (-not $b) { $b = (Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue | Select-Object -First 1) }; if ($b) { $b.CurrentBrightness }";
     let out = run_powershell(script)?;
     if out.is_empty() || out.eq_ignore_ascii_case("null") {
         return Err(
@@ -184,7 +184,8 @@ fn set_wmi_brightness(value: u32) -> Result<(), String> {
     }
 
     let script = format!(
-        "$m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods | Select-Object -First 1; \
+        "$m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Where-Object {{ $_.Active }} | Select-Object -First 1; \
+         if (-not $m) {{ $m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Select-Object -First 1 }}; \
          if ($null -eq $m) {{ Write-Error 'No WmiMonitorBrightnessMethods'; exit 1 }}; \
          $r = Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{{ Timeout = 1; Brightness = {v} }}; \
          if ($r.ReturnValue -ne 0) {{ Write-Error ('WmiSetBrightness failed: ' + $r.ReturnValue); exit $r.ReturnValue }}; \
@@ -216,7 +217,7 @@ pub(crate) struct WmiScan {
 /// Runs a single batch PowerShell command to fetch all WMI brightness and monitor ID info at once.
 /// This avoids multiple powershell.exe spawns, speeding up scan by ~3-4x.
 pub(crate) fn query_wmi_scan() -> WmiScan {
-    let script = r#"$b = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue | Where-Object { $_.Active } | Select-Object -First 1; if ($b) { Write-Output ('INTERNAL|{0}|{1}' -f $b.InstanceName, $b.CurrentBrightness) }; $mons = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | Where-Object { $_.Active }; foreach ($m in $mons) { $fn = ($m.UserFriendlyName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; $mf = ($m.ManufacturerName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; $se = ($m.SerialNumberID | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; Write-Output ('ID|{0}|{1}|{2}|{3}' -f $m.InstanceName, $mf, $fn, $se) }"#;
+    let script = r#"$b = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue | Where-Object { $_.Active } | Select-Object -First 1; if (-not $b) { $b = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue | Select-Object -First 1 }; if ($b) { Write-Output ('INTERNAL|{0}|{1}' -f $b.InstanceName, $b.CurrentBrightness) }; $mons = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | Where-Object { $_.Active }; if (-not $mons) { $mons = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue }; foreach ($m in $mons) { $fn = ($m.UserFriendlyName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; $mf = ($m.ManufacturerName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; $se = ($m.SerialNumberID | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join ''; Write-Output ('ID|{0}|{1}|{2}|{3}' -f $m.InstanceName, $mf, $fn, $se) }"#;
     let out = match run_powershell(script) {
         Ok(o) => o,
         Err(_) => return WmiScan::default(),
@@ -298,6 +299,36 @@ static SCAN_CACHE: OnceLock<Mutex<Option<(std::time::Instant, Vec<MonitorInfo>)>
 
 fn scan_cache() -> &'static Mutex<Option<(std::time::Instant, Vec<MonitorInfo>)>> {
     SCAN_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+pub fn invalidate_scan_cache() {
+    if let Ok(mut guard) = scan_cache().lock() {
+        *guard = None;
+    }
+}
+
+pub fn format_dxva2_code(code: u32) -> String {
+    match code {
+        0xC0262589 => "0xC0262589 (DDC/CI command rejected)".to_string(),
+        0xC0262588 => "0xC0262588 (Invalid message length)".to_string(),
+        0xC0262587 => "0xC0262587 (Checksum mismatch)".to_string(),
+        0xC0262582 => "0xC0262582 (I2C transmission error)".to_string(),
+        0xC0262580 => "0xC0262580 (Monitor disconnected)".to_string(),
+        0 => "0x00000000".to_string(),
+        c => format!("0x{c:08X}"),
+    }
+}
+
+pub fn format_dxva2_error(le_bright: u32, le_vcp: u32) -> String {
+    if le_bright == le_vcp {
+        format_dxva2_code(le_bright)
+    } else {
+        format!(
+            "brightness: {}, VCP 0x10: {}",
+            format_dxva2_code(le_bright),
+            format_dxva2_code(le_vcp)
+        )
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -433,18 +464,28 @@ mod ddc {
             if GetMonitorInfoW(hmon, &mut mi as *mut MONITORINFOEXW as LPMONITORINFO) == 0 {
                 return None;
             }
-            let mut dd: DISPLAY_DEVICEW = std::mem::zeroed();
-            dd.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as DWORD;
-            if EnumDisplayDevicesW(mi.szDevice.as_ptr(), 0, &mut dd, 0) == 0 {
-                return None;
+            let mut fallback_token = None;
+            let mut dev_idx = 0;
+            loop {
+                let mut dd: DISPLAY_DEVICEW = std::mem::zeroed();
+                dd.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as DWORD;
+                if EnumDisplayDevicesW(mi.szDevice.as_ptr(), dev_idx, &mut dd, 0) == 0 {
+                    break;
+                }
+                dev_idx += 1;
+                let id = wide_to_string(&dd.DeviceID);
+                if let Some(tok) = id.split('\\').nth(1) {
+                    let token = tok.trim().to_uppercase();
+                    if !token.is_empty() {
+                        if token != "DEFAULT_MONITOR" {
+                            return Some(token);
+                        } else if fallback_token.is_none() {
+                            fallback_token = Some(token);
+                        }
+                    }
+                }
             }
-            let id = wide_to_string(&dd.DeviceID);
-            let token = id.split('\\').nth(1)?.trim().to_uppercase();
-            if token.is_empty() {
-                None
-            } else {
-                Some(token)
-            }
+            fallback_token
         }
     }
 
@@ -596,7 +637,7 @@ mod ddc {
                                 max_native: 100,
                                 capable: false,
                                 vcp_fallback: false,
-                                error: format!("brightness le={le_bright}, VCP 0x10 le={le_vcp}"),
+                                error: super::format_dxva2_error(le_bright, le_vcp),
                             })
                         }
                     }
@@ -661,7 +702,8 @@ mod ddc {
                 Ok(super::native_to_percent(current, 0, max))
             }
             Probe::Dead { le_bright, le_vcp } => Err(format!(
-                "Failed to read brightness (brightness le={le_bright}, VCP 0x10 le={le_vcp}). Please check if DDC/CI is enabled in monitor OSD."
+                "Failed to read brightness ({}). Please check if DDC/CI is enabled in monitor OSD.",
+                super::format_dxva2_error(le_bright, le_vcp)
             )),
         })
     }
@@ -734,7 +776,8 @@ mod ddc {
                     Ok(())
                 }
                 Probe::Dead { le_bright, le_vcp } => Err(format!(
-                    "Failed to set brightness (brightness le={le_bright}, VCP 0x10 le={le_vcp}). Please check if DDC/CI is enabled in monitor OSD."
+                    "Failed to set brightness ({}). Please check if DDC/CI is enabled in monitor OSD.",
+                    super::format_dxva2_error(le_bright, le_vcp)
                 )),
             }
         })
@@ -784,6 +827,7 @@ pub(crate) fn get_active_hmonitor_count() -> usize {
 }
 
 /// Checks if the internal laptop display is currently active in Windows desktop.
+/// Checks if the internal laptop display is currently active in Windows desktop.
 /// Prevents displaying a brightness slider when laptop lid is closed or project mode is "Second screen only".
 pub(crate) fn is_internal_display_active(
     internal_token: Option<&str>,
@@ -796,15 +840,16 @@ pub(crate) fn is_internal_display_active(
         return false;
     }
 
-    // If we know the internal token (e.g. "CMN14D4"), verify it exists among active HMONITORs
+    // 1. If we can positively match the internal token among active HMONITORs, it's definitely active
     if let Some(it) = internal_token {
-        if !it.is_empty() {
-            return active_tokens.iter().any(|t| t.eq_ignore_ascii_case(it));
+        if !it.is_empty() && active_tokens.iter().any(|t| t.eq_ignore_ascii_case(it)) {
+            return true;
         }
     }
 
-    // Fallback: If internal_token was unknown, but active desktop HMONITORs exceed detected DDC monitors,
-    // the remaining non-DDC HMONITOR is the internal panel.
+    // 2. Fallback: If desktop has more active HMONITORs than DDC-capable external monitors,
+    // the remaining monitor is the internal laptop panel!
+    // (e.g. Surface Laptop / standalone laptop: 1 active HMONITOR > 0 DDC-capable = true, even if GDI reported "DEFAULT_MONITOR")
     active_hmonitor_count > ddc_capable_count
 }
 
@@ -871,7 +916,13 @@ pub(crate) fn list_monitors_blocking() -> Result<Vec<MonitorInfo>, String> {
                             format!("Laptop Display ({friendly})")
                         }
                     }
-                    None => "Laptop Display (Internal)".to_string(),
+                    None => {
+                        if !t.is_empty() {
+                            format!("Laptop Display ({t})")
+                        } else {
+                            "Laptop Display (Internal)".to_string()
+                        }
+                    }
                 },
                 None => "Laptop Display (Internal)".to_string(),
             };
@@ -900,6 +951,17 @@ pub(crate) fn list_monitors_blocking() -> Result<Vec<MonitorInfo>, String> {
                             continue;
                         }
                     }
+                    // If DDC failed on an internal/default monitor while WMI is actively controlling the internal panel, skip it
+                    if !m.capable {
+                        let is_generic_or_internal = m.token.is_none()
+                            || m.token.as_deref() == Some("DEFAULT_MONITOR")
+                            || m.name.contains("Digital Flat Panel")
+                            || m.name.contains("Internal")
+                            || m.name.contains("Generic PnP Monitor");
+                        if is_generic_or_internal && (active_hmonitor_count <= 1 || m.name.contains("Digital Flat Panel")) {
+                            continue;
+                        }
+                    }
                 }
                 let percent = native_to_percent(m.current_native, m.min_native, m.max_native);
                 let id = format!("ddc:{}", m.index);
@@ -921,7 +983,7 @@ pub(crate) fn list_monitors_blocking() -> Result<Vec<MonitorInfo>, String> {
                         "Display is turned off or DDC/CI is disabled in monitor OSD.".to_string()
                     } else {
                         format!(
-                            "Display is turned off or DDC/CI is disabled ({}).",
+                            "DDC/CI communication failed ({}). Please check if DDC/CI is enabled in monitor OSD.",
                             m.error
                         )
                     },
@@ -970,7 +1032,13 @@ pub(crate) fn set_brightness_blocking(id: String, value: u32) -> Result<(), Stri
 /// Tauri commands are asynchronous and use spawn_blocking because PowerShell/DDC are blocking I/O.
 /// This prevents UI stuttering while sliding controls.
 #[tauri::command]
-pub async fn list_monitors(app: tauri::AppHandle) -> Result<Vec<MonitorInfo>, String> {
+pub async fn list_monitors(
+    app: tauri::AppHandle,
+    force: Option<bool>,
+) -> Result<Vec<MonitorInfo>, String> {
+    if force.unwrap_or(false) {
+        invalidate_scan_cache();
+    }
     let list = tauri::async_runtime::spawn_blocking(list_monitors_blocking)
         .await
         .map_err(|e| format!("Worker thread error while listing monitors: {e}"))?;
@@ -1172,9 +1240,31 @@ pub(crate) mod wmi_native {
             (*enumerator).Release();
 
             if !SUCCEEDED(hr) || returned == 0 || obj.is_null() {
+                // Fallback: query without WHERE Active = True for Surface or OEM drivers
+                let query_all = Bstr::new("SELECT * FROM WmiMonitorBrightnessMethods");
+                let mut enum_all: *mut IEnumWbemClassObject = null_mut();
+                let hr_all = (*svc).ExecQuery(
+                    wql.as_ptr(),
+                    query_all.as_ptr(),
+                    (WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY) as i32,
+                    null_mut(),
+                    &mut enum_all,
+                );
+                if SUCCEEDED(hr_all) && !enum_all.is_null() {
+                    let mut obj_fallback: *mut IWbemClassObject = null_mut();
+                    let mut ret_fallback: ULONG = 0;
+                    let hr2 = (*enum_all).Next(WBEM_INFINITE as i32, 1, &mut obj_fallback, &mut ret_fallback);
+                    (*enum_all).Release();
+                    if SUCCEEDED(hr2) && ret_fallback > 0 && !obj_fallback.is_null() {
+                        obj = obj_fallback;
+                    }
+                }
+            }
+
+            if obj.is_null() {
                 (*svc).Release();
                 (*loc).Release();
-                return Err("No active WmiMonitorBrightnessMethods instance found".to_string());
+                return Err("No WmiMonitorBrightnessMethods instance found".to_string());
             }
 
             // Get __RELPATH
@@ -1301,9 +1391,31 @@ pub(crate) mod wmi_native {
             (*enumerator).Release();
 
             if !SUCCEEDED(hr) || returned == 0 || obj.is_null() {
+                // Fallback: query without WHERE Active = True for Surface or OEM drivers
+                let query_all = Bstr::new("SELECT * FROM WmiMonitorBrightness");
+                let mut enum_all: *mut IEnumWbemClassObject = null_mut();
+                let hr_all = (*svc).ExecQuery(
+                    wql.as_ptr(),
+                    query_all.as_ptr(),
+                    (WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY) as i32,
+                    null_mut(),
+                    &mut enum_all,
+                );
+                if SUCCEEDED(hr_all) && !enum_all.is_null() {
+                    let mut obj_fallback: *mut IWbemClassObject = null_mut();
+                    let mut ret_fallback: ULONG = 0;
+                    let hr2 = (*enum_all).Next(WBEM_INFINITE as i32, 1, &mut obj_fallback, &mut ret_fallback);
+                    (*enum_all).Release();
+                    if SUCCEEDED(hr2) && ret_fallback > 0 && !obj_fallback.is_null() {
+                        obj = obj_fallback;
+                    }
+                }
+            }
+
+            if obj.is_null() {
                 (*svc).Release();
                 (*loc).Release();
-                return Err("No active WmiMonitorBrightness instance found".to_string());
+                return Err("No WmiMonitorBrightness instance found".to_string());
             }
 
             let mut cur_var = AutoVariant::new();
@@ -1416,6 +1528,63 @@ mod tests {
         assert_eq!(extract_token_from_instance(""), None);
         assert_eq!(extract_token_from_instance("NO-BACKSLASH"), None);
         assert_eq!(extract_token_from_instance("DISPLAY\\\\5&x"), None);
+    }
+
+    #[test]
+    fn test_is_internal_display_active() {
+        // Case 1: Exact token match (e.g. CMN14D4)
+        assert!(is_internal_display_active(
+            Some("CMN14D4"),
+            &["CMN14D4".to_string(), "MSI30D2".to_string()],
+            2,
+            1
+        ));
+
+        // Case 2: Surface Laptop scenario - token mismatch due to GDI reporting DEFAULT_MONITOR
+        // Desktop has 1 active display, 0 external DDC monitors -> internal screen MUST be active!
+        assert!(is_internal_display_active(
+            Some("MS_0004"),
+            &["DEFAULT_MONITOR".to_string()],
+            1,
+            0
+        ));
+
+        // Case 3: Surface Laptop with lid closed or "Second screen only" mode
+        // 1 active display on desktop, and 1 DDC external monitor active -> internal screen is OFF!
+        assert!(!is_internal_display_active(
+            Some("MS_0004"),
+            &["MSI30D2".to_string()],
+            1,
+            1
+        ));
+
+        // Case 4: No displays at all
+        assert!(!is_internal_display_active(
+            Some("MS_0004"),
+            &[],
+            0,
+            0
+        ));
+
+        // Case 5: Token unknown (None), but active desktop screens exceed DDC screens
+        assert!(is_internal_display_active(None, &[], 2, 1));
+        assert!(!is_internal_display_active(None, &[], 1, 1));
+    }
+
+    #[test]
+    fn test_format_dxva2_code() {
+        assert_eq!(
+            format_dxva2_code(0xC0262589),
+            "0xC0262589 (DDC/CI command rejected)"
+        );
+        assert_eq!(
+            format_dxva2_code(0xC0262582),
+            "0xC0262582 (I2C transmission error)"
+        );
+        assert_eq!(
+            format_dxva2_error(0xC0262589, 0xC0262589),
+            "0xC0262589 (DDC/CI command rejected)"
+        );
     }
 
     /// Run `cargo test -- --nocapture` to inspect detected monitors on the active machine.

@@ -998,7 +998,7 @@ function renderMonitors(): void {
           <span class="incapable-info-text">${m.detail}</span>
         </div>
         <div class="monitor-card-footer">
-          <span class="monitor-detail-text warn">${m.detail}</span>
+          <span class="monitor-detail-text warn">Hardware DDC/CI unsupported or disabled in monitor OSD</span>
         </div>
       `;
     }
@@ -1136,7 +1136,7 @@ function applyMonitors(data: MonitorInfo[]): void {
   }
 }
 
-async function loadMonitors(): Promise<void> {
+async function loadMonitors(force = false): Promise<void> {
   const refreshBtn = isFlyout
     ? el<HTMLButtonElement>("tray-refresh-btn")
     : el<HTMLButtonElement>("refresh-btn");
@@ -1151,7 +1151,7 @@ async function loadMonitors(): Promise<void> {
   }
 
   try {
-    const list = await invoke<MonitorInfo[]>("list_monitors");
+    const list = await invoke<MonitorInfo[]>("list_monitors", { force });
     applyMonitors(list);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1282,7 +1282,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     el<HTMLButtonElement>("tray-refresh-btn")?.addEventListener("click", () => {
-      void loadMonitors();
+      void loadMonitors(true);
     });
 
     el<HTMLButtonElement>("tray-open-main-btn")?.addEventListener("click", async () => {
@@ -1305,7 +1305,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Rescan displays button
     el<HTMLButtonElement>("refresh-btn")?.addEventListener("click", () => {
-      void loadMonitors();
+      void loadMonitors(true);
     });
 
     // Hide to system tray button
