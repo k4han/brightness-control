@@ -1,6 +1,6 @@
 {
   "name": "brightness-control",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightweight Windows screen brightness control application supporting laptop and external monitors.",
   "license": "MIT",
   "author": "k4han",
@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:windows:build": "tauri-windows-bundle build --runner pnpm"
   },
   "dependencies": {
     "@tauri-apps/api": "^2"
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "@choochmeque/tauri-windows-bundle": "^0.1.29"
   }
 }

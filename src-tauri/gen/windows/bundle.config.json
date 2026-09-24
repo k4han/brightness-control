@@ -1,0 +1,22 @@
+{
+  "publisher": "CN=04F31EDB-5205-4D58-80F1-CD80FE95633F",
+  "publisherDisplayName": "kh4n",
+  "capabilities": {
+    "general": [
+      "internetClient"
+    ]
+  },
+  "extensions": {
+    "shareTarget": false,
+    "fileAssociations": [],
+    "protocolHandlers": []
+  },
+  "signing": {
+    "pfx": null,
+    "pfxPassword": null
+  },
+  "resourceIndex": {
+    "enabled": false,
+    "keepConfig": false
+  }
+}

@@ -1,10 +1,18 @@
-# Brightness Control
+# Multi Brightness Control
 
 A modern, lightweight Windows desktop application built with **Tauri v2**, **Rust**, and **TypeScript** for seamless hardware brightness adjustment across both internal laptop displays and external monitors.
 
+[![Microsoft Store](https://img.shields.io/badge/Microsoft_Store-Get_it_now-0078D4?style=for-the-badge&logo=microsoft&logoColor=white)](https://apps.microsoft.com/detail/9P6PBX49B35W)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D6.svg)](https://microsoft.com/windows)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131.svg)](https://tauri.app)
+
+---
+
+## 📥 Installation
+
+- **Microsoft Store (Recommended)**: [Install from Microsoft Store](https://apps.microsoft.com/detail/9P6PBX49B35W) — Quick one-click install with automatic background updates.
+- **Standalone Installers**: Download the latest `.exe` (NSIS Setup) or `.msi` (WiX enterprise package) from [GitHub Releases](https://github.com/k4han/brightness-control/releases/latest).
 
 ---
 

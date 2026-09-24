@@ -10,6 +10,11 @@ license = "MIT"
 name = "tauri_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "MultiBrightnessControl"
+path = "src/main.rs"
+
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

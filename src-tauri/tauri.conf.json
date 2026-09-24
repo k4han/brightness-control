@@ -1,8 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Brightness Control",
-  "version": "0.1.0",
-  "identifier": "com.k4han.brightness",
+  "productName": "Multi Brightness Control",
+  "version": "0.1.1",
+  "identifier": "kh4n.MultiBrightnesscontrol",
+  "mainBinaryName": "MultiBrightnessControl",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
