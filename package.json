@@ -20,5 +20,10 @@
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
     "@choochmeque/tauri-windows-bundle": "^0.1.29"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "skia-canvas"
+    ]
   }
 }
