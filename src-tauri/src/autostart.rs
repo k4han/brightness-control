@@ -1,6 +1,7 @@
 // Manage "Start with Windows" (Autostart on boot) functionality.
-// Uses Windows Registry key HKCU\Software\Microsoft\Windows\CurrentVersion\Run.
-// Does not require Administrator privileges because it resides in HKEY_CURRENT_USER.
+// Supports both:
+// 1. Packaged MSIX / Microsoft Store app (uses Windows.ApplicationModel StartupTask declared in AppxManifest, avoids writing raw WindowsApps path to HKCU\Run which causes Access Denied).
+// 2. Unpackaged Win32 / Standalone installer (uses HKCU\Software\Microsoft\Windows\CurrentVersion\Run).
 
 use std::process::Command;
 
@@ -13,6 +14,63 @@ const APP_NAME: &str = "BrightnessControl";
 /// CREATE_NO_WINDOW flag prevents a console window from popping up when reg.exe executes.
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// Checks if the process is running inside an MSIX / AppX package container (e.g. Microsoft Store).
+pub fn is_packaged_app() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetCurrentPackageFamilyName(
+                package_family_name_length: *mut u32,
+                package_family_name: *mut u16,
+            ) -> i32;
+        }
+        let mut len: u32 = 0;
+        // APPMODEL_ERROR_NO_PACKAGE is 15700
+        let res = unsafe { GetCurrentPackageFamilyName(&mut len, std::ptr::null_mut()) };
+        if res != 15700 {
+            return true;
+        }
+    }
+
+    if let Ok(current_exe) = std::env::current_exe() {
+        if current_exe.to_string_lossy().contains("WindowsApps") {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Checks whether the system has just booted up recently (within 3 minutes).
+/// Useful for packaged apps launching silently on boot without command-line arguments.
+#[cfg(target_os = "windows")]
+pub fn is_boot_startup() -> bool {
+    unsafe { winapi::um::sysinfoapi::GetTickCount64() < 180_000 }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn is_boot_startup() -> bool {
+    false
+}
+
+/// Cleans up any stale or invalid registry entries pointing to `WindowsApps`.
+/// Executables inside `C:\Program Files\WindowsApps\` cannot be executed directly
+/// by explorer.exe via the Run key and will trigger Access Denied errors on login.
+pub fn cleanup_stale_packaged_run_key() {
+    if let Ok(Some(reg_path)) = get_registered_exe_path() {
+        if reg_path.contains("WindowsApps") {
+            let mut cmd = Command::new("reg.exe");
+            cmd.args(["delete", RUN_KEY, "/v", APP_NAME, "/f"]);
+
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(CREATE_NO_WINDOW);
+
+            let _ = cmd.output();
+        }
+    }
+}
 
 /// Retrieves the registered executable path from registry, if present.
 pub fn get_registered_exe_path() -> Result<Option<String>, String> {
@@ -59,8 +117,48 @@ pub fn get_registered_exe_path() -> Result<Option<String>, String> {
     Ok(None)
 }
 
+/// Path to local autostart config for packaged MSIX apps
+fn packaged_config_path() -> Option<std::path::PathBuf> {
+    std::env::var_os("LOCALAPPDATA").map(|local_app_data| {
+        let mut path = std::path::PathBuf::from(local_app_data);
+        path.push("MultiBrightnessControl");
+        let _ = std::fs::create_dir_all(&path);
+        path.push("autostart.json");
+        path
+    })
+}
+
+fn get_packaged_autostart_preference() -> bool {
+    if let Some(path) = packaged_config_path() {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(enabled) = val.get("enabled").and_then(|v| v.as_bool()) {
+                    return enabled;
+                }
+            }
+        }
+    }
+    // Default to true for packaged app since StartupTask is declared enabled in manifest
+    true
+}
+
+fn set_packaged_autostart_preference(enabled: bool) -> Result<bool, String> {
+    if let Some(path) = packaged_config_path() {
+        let val = serde_json::json!({ "enabled": enabled });
+        std::fs::write(&path, val.to_string())
+            .map_err(|e| format!("Failed to save autostart preference: {e}"))?;
+    }
+    Ok(enabled)
+}
+
 /// Ensures the autostart registry entry points to the current executable if autostart was previously enabled.
 pub fn sync_autostart_path() {
+    if is_packaged_app() {
+        // Remove stale registry entry pointing to WindowsApps if any
+        cleanup_stale_packaged_run_key();
+        return;
+    }
+
     if let Ok(Some(reg_path)) = get_registered_exe_path() {
         if let Ok(current_exe) = std::env::current_exe() {
             let current_str = current_exe.to_string_lossy();
@@ -73,6 +171,11 @@ pub fn sync_autostart_path() {
 }
 
 pub fn is_autostart_enabled() -> Result<bool, String> {
+    if is_packaged_app() {
+        cleanup_stale_packaged_run_key();
+        return Ok(get_packaged_autostart_preference());
+    }
+
     match get_registered_exe_path()? {
         Some(reg_path) => {
             if let Ok(current_exe) = std::env::current_exe() {
@@ -89,6 +192,11 @@ pub fn is_autostart_enabled() -> Result<bool, String> {
 }
 
 pub fn set_autostart(enabled: bool) -> Result<bool, String> {
+    if is_packaged_app() {
+        cleanup_stale_packaged_run_key();
+        return set_packaged_autostart_preference(enabled);
+    }
+
     if enabled {
         let exe_path = std::env::current_exe()
             .map_err(|e| format!("Failed to retrieve current executable path: {e}"))?;

@@ -9,7 +9,16 @@
   "extensions": {
     "shareTarget": false,
     "fileAssociations": [],
-    "protocolHandlers": []
+    "protocolHandlers": [],
+    "startupTask": {
+      "enabled": true,
+      "taskId": "MultiBrightnessControlStartup"
+    },
+    "appExecutionAliases": [
+      {
+        "alias": "MultiBrightnessControl.exe"
+      }
+    ]
   },
   "signing": {
     "pfx": null,

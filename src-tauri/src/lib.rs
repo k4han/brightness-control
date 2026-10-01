@@ -80,9 +80,19 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // If not launched silently on Windows boot (--autostart / --minimized),
+            // If running as packaged app on system boot but user disabled autostart, exit immediately.
+            if autostart::is_packaged_app()
+                && autostart::is_boot_startup()
+                && !autostart::is_autostart_enabled().unwrap_or(true)
+            {
+                app.handle().exit(0);
+                return Ok(());
+            }
+
+            // If not launched silently on Windows boot (--autostart / --minimized or packaged boot launch),
             // display the main window on standard user launch.
-            let is_autostart = std::env::args().any(|arg| arg == "--autostart" || arg == "--minimized");
+            let is_autostart = std::env::args().any(|arg| arg == "--autostart" || arg == "--minimized")
+                || (autostart::is_packaged_app() && autostart::is_boot_startup());
             if !is_autostart {
                 if let Some(w) = app.get_webview_window(tray::MAIN_LABEL) {
                     let _ = w.show();

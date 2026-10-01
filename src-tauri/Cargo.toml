@@ -1,6 +1,6 @@
 [package]
 name = "brightness-control"
-version = "0.1.0"
+version = "0.1.2"
 description = "Lightweight Windows Screen Brightness Control application supporting laptop and external monitors"
 authors = ["k4han"]
 edition = "2021"
@@ -25,7 +25,7 @@ serde_json = "1"
 winapi = { version = "0.3", features = [
     "winuser", "windef", "minwindef", "winnt", "wingdi",
     "physicalmonitorenumerationapi", "highlevelmonitorconfigurationapi", "lowlevelmonitorconfigurationapi", "errhandlingapi",
-    "wbemcli", "combaseapi", "oleauto", "oaidl", "objbase"
+    "wbemcli", "combaseapi", "oleauto", "oaidl", "objbase", "sysinfoapi"
 ] }
 
 [profile.release]

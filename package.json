@@ -1,6 +1,6 @@
 {
   "name": "brightness-control",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lightweight Windows screen brightness control application supporting laptop and external monitors.",
   "license": "MIT",
   "author": "k4han",
