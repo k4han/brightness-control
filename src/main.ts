@@ -163,6 +163,121 @@ window.addEventListener("focus", () => {
 applyTheme(getSavedTheme());
 
 // =========================================================
+// WINDOWS OS & STYLE PREFERENCES (AUTO / WIN 10 / WIN 11)
+// =========================================================
+
+interface OsInfo {
+  detected_style: "win10" | "win11";
+  build_number: number;
+  product_name: string;
+  display_version: string;
+  is_windows_11: boolean;
+}
+
+type WinStylePref = "auto" | "win10" | "win11";
+const WIN_STYLE_STORAGE_KEY = "brightness_control_win_style";
+const WIN_STYLE_CHANGED_EVENT = "app-win-style-changed";
+
+let detectedOsInfo: OsInfo = {
+  detected_style: "win10",
+  build_number: 19045,
+  product_name: "Windows 10",
+  display_version: "22H2",
+  is_windows_11: false,
+};
+
+function getSavedWinStyle(): WinStylePref {
+  try {
+    const saved = localStorage.getItem(WIN_STYLE_STORAGE_KEY);
+    if (saved === "auto" || saved === "win10" || saved === "win11") {
+      return saved;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return "auto";
+}
+
+function getEffectiveWinStyle(pref = getSavedWinStyle()): "win10" | "win11" {
+  if (pref === "win10" || pref === "win11") return pref;
+  return detectedOsInfo.detected_style || "win10";
+}
+
+function updateStyleUi(pref: WinStylePref, effective: "win10" | "win11"): void {
+  // Apply data-win-style attribute on html and body
+  document.documentElement.setAttribute("data-win-style", effective);
+  document.body.setAttribute("data-win-style", effective);
+
+  // Update pills in Settings panel
+  document.querySelectorAll<HTMLButtonElement>(".style-pill").forEach((pill) => {
+    const val = pill.getAttribute("data-style-val");
+    if (val === pref) {
+      pill.classList.add("active");
+    } else {
+      pill.classList.remove("active");
+    }
+  });
+
+  // Update settings description text
+  const desc = el<HTMLElement>("settings-os-desc");
+  if (desc) {
+    const osShort = `${detectedOsInfo.product_name}${detectedOsInfo.display_version ? ` ${detectedOsInfo.display_version}` : ` (Build ${detectedOsInfo.build_number})`}`;
+    if (pref === "auto") {
+      desc.textContent = `Auto (Detected: ${osShort})`;
+    } else if (pref === "win11") {
+      desc.textContent = `Windows 11 Fluent 2.0 (Host: ${osShort})`;
+    } else {
+      desc.textContent = `Windows 10 Metro / Fluent 1.0 (Host: ${osShort})`;
+    }
+  }
+}
+
+function applyWinStyle(pref: WinStylePref, broadcast = true): void {
+  const effective = getEffectiveWinStyle(pref);
+  try {
+    localStorage.setItem(WIN_STYLE_STORAGE_KEY, pref);
+  } catch {
+    // Ignore storage errors
+  }
+  updateStyleUi(pref, effective);
+
+  if (broadcast) {
+    void emit(WIN_STYLE_CHANGED_EVENT, { pref, effective });
+  }
+}
+
+async function initOsInfo(): Promise<void> {
+  try {
+    const info = await invoke<OsInfo>("get_os_info");
+    if (info) {
+      detectedOsInfo = info;
+    }
+  } catch (e) {
+    console.error("Failed to query OS info:", e);
+  }
+  applyWinStyle(getSavedWinStyle(), false);
+}
+
+// React to cross-window style changes
+void listen<{ pref: WinStylePref; effective: "win10" | "win11" }>(WIN_STYLE_CHANGED_EVENT, (event) => {
+  if (event.payload && event.payload.pref) {
+    updateStyleUi(event.payload.pref, event.payload.effective);
+  }
+});
+
+// React to storage events across webview processes
+window.addEventListener("storage", (e) => {
+  if (e.key === WIN_STYLE_STORAGE_KEY) {
+    applyWinStyle(getSavedWinStyle(), false);
+  }
+});
+
+// Re-verify on focus
+window.addEventListener("focus", () => {
+  applyWinStyle(getSavedWinStyle(), false);
+});
+
+// =========================================================
 // CUSTOM MONITOR NAMES (LOCAL PERSISTENCE)
 // =========================================================
 
@@ -492,7 +607,11 @@ function renderTrayMaster(host: HTMLElement): void {
         ${SVG_ALL_MONITORS}
         <span class="tray-item-name">All Displays</span>
       </div>
-      <span class="tray-item-pct" id="tray-master-val">${avg}%</span>
+      <div class="tray-stepper-wrap">
+        <button type="button" class="tray-step-btn" id="tray-master-step-down" title="Decrease 5%" aria-label="Decrease 5%">−</button>
+        <span class="tray-item-pct" id="tray-master-val">${avg}%</span>
+        <button type="button" class="tray-step-btn" id="tray-master-step-up" title="Increase 5%" aria-label="Increase 5%">+</button>
+      </div>
     </div>
     <div class="tray-slider-row">
       ${SVG_SUN_DIM}
@@ -531,6 +650,20 @@ function renderTrayMaster(host: HTMLElement): void {
   });
   slider.addEventListener("change", () => {
     applyToAll(Number(slider.value), true);
+  });
+
+  card.querySelector("#tray-master-step-down")?.addEventListener("click", () => {
+    const cur = Number(slider.value);
+    const target = clampUi(cur - STEP, min, 100);
+    slider.value = String(target);
+    applyToAll(target, true);
+  });
+
+  card.querySelector("#tray-master-step-up")?.addEventListener("click", () => {
+    const cur = Number(slider.value);
+    const target = clampUi(cur + STEP, min, 100);
+    slider.value = String(target);
+    applyToAll(target, true);
   });
 
   attachWheelListener(card, (delta) => {
@@ -575,7 +708,11 @@ function renderTrayMonitors(): void {
           ${deviceIcon}
           <span class="tray-item-name" title="${displayName}">${displayName}</span>
         </div>
-        <span class="tray-item-pct" data-tray-pct="${m.id}">${m.current}%</span>
+        <div class="tray-stepper-wrap">
+          <button type="button" class="tray-step-btn" data-tray-step-down="${m.id}" title="Decrease 5%" aria-label="Decrease 5%">−</button>
+          <span class="tray-item-pct" data-tray-pct="${m.id}">${m.current}%</span>
+          <button type="button" class="tray-step-btn" data-tray-step-up="${m.id}" title="Increase 5%" aria-label="Increase 5%">+</button>
+        </div>
       </div>
       <div class="tray-slider-row">
         ${SVG_SUN_DIM}
@@ -610,6 +747,26 @@ function renderTrayMonitors(): void {
       pct.textContent = `${v}%`;
       updateSliderVisual(slider, v, m.min, m.max);
       flushSet(m, v);
+      refreshTrayMaster();
+    });
+
+    card.querySelector(`[data-tray-step-down="${m.id}"]`)?.addEventListener("click", () => {
+      const cur = Number(slider.value);
+      const target = clampUi(cur - STEP, m.min, m.max);
+      slider.value = String(target);
+      pct.textContent = `${target}%`;
+      updateSliderVisual(slider, target, m.min, m.max);
+      flushSet(m, target);
+      refreshTrayMaster();
+    });
+
+    card.querySelector(`[data-tray-step-up="${m.id}"]`)?.addEventListener("click", () => {
+      const cur = Number(slider.value);
+      const target = clampUi(cur + STEP, m.min, m.max);
+      slider.value = String(target);
+      pct.textContent = `${target}%`;
+      updateSliderVisual(slider, target, m.min, m.max);
+      flushSet(m, target);
       refreshTrayMaster();
     });
 
@@ -1315,23 +1472,37 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Settings & Preferences panel
-    const settingsBtn = el<HTMLButtonElement>("settings-toggle-btn");
-    const settingsPanel = el<HTMLElement>("settings-panel");
-    const settingsCloseBtn = el<HTMLButtonElement>("settings-close-btn");
+    // Tab navigation (Displays / Settings)
+    let activeTab: "displays" | "settings" = "displays";
 
-    const toggleSettings = (): void => {
-      if (!settingsPanel) return;
-      const isShowing = settingsPanel.style.display !== "none";
-      settingsPanel.style.display = isShowing ? "none" : "block";
-      if (settingsBtn) {
-        if (isShowing) settingsBtn.classList.remove("active");
-        else settingsBtn.classList.add("active");
+    const setTab = (tab: "displays" | "settings"): void => {
+      activeTab = tab;
+      const tabDisplaysBtn = el<HTMLButtonElement>("tab-btn-displays");
+      const tabSettingsBtn = el<HTMLButtonElement>("tab-btn-settings");
+      const viewDisplays = el<HTMLElement>("view-displays");
+      const viewSettings = el<HTMLElement>("view-settings");
+
+      if (tab === "displays") {
+        tabDisplaysBtn?.classList.add("active");
+        tabDisplaysBtn?.setAttribute("aria-selected", "true");
+        tabSettingsBtn?.classList.remove("active");
+        tabSettingsBtn?.setAttribute("aria-selected", "false");
+
+        if (viewDisplays) viewDisplays.classList.add("active");
+        if (viewSettings) viewSettings.classList.remove("active");
+      } else {
+        tabSettingsBtn?.classList.add("active");
+        tabSettingsBtn?.setAttribute("aria-selected", "true");
+        tabDisplaysBtn?.classList.remove("active");
+        tabDisplaysBtn?.setAttribute("aria-selected", "false");
+
+        if (viewDisplays) viewDisplays.classList.remove("active");
+        if (viewSettings) viewSettings.classList.add("active");
       }
     };
 
-    settingsBtn?.addEventListener("click", toggleSettings);
-    settingsCloseBtn?.addEventListener("click", toggleSettings);
+    el<HTMLButtonElement>("tab-btn-displays")?.addEventListener("click", () => setTab("displays"));
+    el<HTMLButtonElement>("tab-btn-settings")?.addEventListener("click", () => setTab("settings"));
 
     // Theme appearance segmented controls
     document.querySelectorAll<HTMLButtonElement>(".theme-pill").forEach((pill) => {
@@ -1378,12 +1549,25 @@ window.addEventListener("DOMContentLoaded", () => {
         void loadMonitors();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        if (settingsPanel && settingsPanel.style.display !== "none") {
-          toggleSettings();
+        if (activeTab === "settings") {
+          setTab("displays");
         } else {
           void invoke("hide_main_window");
         }
       }
+    });
+
+    // Windows Style segmented controls
+    document.querySelectorAll<HTMLButtonElement>(".style-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        const val = pill.getAttribute("data-style-val") as WinStylePref;
+        if (val) {
+          applyWinStyle(val, true);
+          const effective = getEffectiveWinStyle(val);
+          const label = val === "auto" ? `Auto (${effective === "win11" ? "Win 11" : "Win 10"})` : val === "win11" ? "Win 11" : "Win 10";
+          setMainStatus(`Windows Style: ${label} ✓`, "ready");
+        }
+      });
     });
 
     // Ensure initial theme UI state is synchronized
@@ -1392,6 +1576,9 @@ window.addEventListener("DOMContentLoaded", () => {
     // Load autostart status
     void loadAutostart();
   }
+
+  // Initialize OS info and apply corresponding native UI style
+  void initOsInfo();
 
   // Listen for synchronization events from backend (when flyout or tray changes brightness)
   void listen<MonitorInfo[]>(TRAY_CHANGED_EVENT, (event) => {

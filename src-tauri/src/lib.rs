@@ -1,6 +1,7 @@
 mod autostart;
 mod brightness;
 mod display_listener;
+pub mod os_info;
 mod tray;
 
 use tauri::tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -50,6 +51,12 @@ fn get_app_version(app: tauri::AppHandle) -> String {
 async fn set_tray_theme(app: tauri::AppHandle, theme: String) -> Result<(), String> {
     tray::set_tray_icon_theme(&app, &theme);
     Ok(())
+}
+
+/// Returns detected Windows OS information and recommended UI style ("win10" or "win11").
+#[tauri::command]
+fn get_os_info() -> os_info::OsInfo {
+    os_info::detect_os()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -137,7 +144,8 @@ pub fn run() {
             get_autostart,
             set_autostart,
             get_app_version,
-            set_tray_theme
+            set_tray_theme,
+            get_os_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

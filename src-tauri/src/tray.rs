@@ -216,14 +216,17 @@ pub fn toggle_flyout_at<R: Runtime>(app: &AppHandle<R>, pos: tauri::PhysicalPosi
         width: FLYOUT_W,
         height: flyout_h,
     }));
+    let os_info = crate::os_info::detect_os();
+    let gap = if os_info.is_windows_11 { 12.0 } else { 2.0 };
+
     let (pw, ph) = (FLYOUT_W * scale, flyout_h * scale);
     let mut x = (pos.x - pw / 2.0) as i32;
-    let mut y = (pos.y - ph - 12.0 * scale) as i32;
+    let mut y = (pos.y - ph - gap * scale) as i32;
 
     // Constrain within right edge of current monitor
     if let Ok(Some(monitor)) = w.current_monitor() {
         let screen_size = monitor.size();
-        let max_x = (screen_size.width as f64 - pw - 12.0 * scale) as i32;
+        let max_x = (screen_size.width as f64 - pw - gap * scale) as i32;
         if x > max_x {
             x = max_x;
         }
@@ -234,7 +237,7 @@ pub fn toggle_flyout_at<R: Runtime>(app: &AppHandle<R>, pos: tauri::PhysicalPosi
     }
     if y < 0 {
         // Taskbar is at top or screen boundary exceeded: place below click position.
-        y = (pos.y + 12.0 * scale) as i32;
+        y = (pos.y + gap * scale) as i32;
     }
     let _ = w.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
         x,

@@ -40,28 +40,51 @@
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
           </button>
-          <button id="settings-toggle-btn" class="header-action-btn" type="button" title="Settings & Preferences" aria-label="Settings">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </button>
         </div>
       </header>
 
-      <!-- Settings Panel (Collapsible) -->
-      <section id="settings-panel" class="settings-panel" style="display: none;">
-        <div class="settings-panel-header">
-          <div class="settings-panel-title-wrap">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-            <span class="settings-panel-title">Settings & Preferences</span>
+      <!-- Navigation Tabs (Displays / Settings) -->
+      <nav class="window-nav-tabs" role="tablist">
+        <button type="button" class="nav-tab-btn active" id="tab-btn-displays" role="tab" aria-selected="true" aria-controls="view-displays">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>Displays</span>
+        </button>
+        <button type="button" class="nav-tab-btn" id="tab-btn-settings" role="tab" aria-selected="false" aria-controls="view-settings">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- Tab View 1: Displays -->
+      <section id="view-displays" class="tab-view active" role="tabpanel" aria-labelledby="tab-btn-displays">
+        <!-- Monitor Cards List -->
+        <div id="monitor-list" class="monitor-list">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading displays…</p>
           </div>
-          <button id="settings-close-btn" class="settings-close-btn" type="button" aria-label="Close">✕</button>
         </div>
 
+        <!-- Error Notification Banner -->
+        <div id="error-banner" class="error-banner" style="display: none;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span id="error" class="error-msg"></span>
+        </div>
+      </section>
+
+      <!-- Tab View 2: Settings & Preferences -->
+      <section id="view-settings" class="tab-view" role="tabpanel" aria-labelledby="tab-btn-settings">
         <div class="settings-content">
           <!-- 1. Theme Appearance Selection -->
           <div class="settings-card">
@@ -93,7 +116,39 @@
             </div>
           </div>
 
-          <!-- 2. Adjust All Displays Master Slider -->
+          <!-- 2. Windows Style (Auto / Win 11 / Win 10) -->
+          <div class="settings-card">
+            <div class="setting-info">
+              <div class="setting-icon-wrap os-icon-wrap">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5"></rect>
+                  <rect x="13" y="3" width="8" height="8" rx="1.5"></rect>
+                  <rect x="3" y="13" width="8" height="8" rx="1.5"></rect>
+                  <rect x="13" y="13" width="8" height="8" rx="1.5"></rect>
+                </svg>
+              </div>
+              <div class="setting-text">
+                <span class="setting-label">Windows Style</span>
+                <p id="settings-os-desc" class="setting-desc">Auto (Detecting Windows…)</p>
+              </div>
+            </div>
+            <div class="theme-segmented style-segmented">
+              <button type="button" class="style-pill active" data-style-val="auto" title="Auto detect Windows version">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+                <span>Auto</span>
+              </button>
+              <button type="button" class="style-pill" data-style-val="win11" title="Windows 11 Fluent style (rounded corners, mica blur, capsule sliders)">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg>
+                <span>Win 11</span>
+              </button>
+              <button type="button" class="style-pill" data-style-val="win10" title="Windows 10 Metro style (sharp corners, rectangular sliders, acrylic)">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><rect x="3" y="3" width="8" height="8"></rect><rect x="13" y="3" width="8" height="8"></rect><rect x="3" y="13" width="8" height="8"></rect><rect x="13" y="13" width="8" height="8"></rect></svg>
+                <span>Win 10</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Adjust All Displays Master Slider -->
           <div class="settings-card">
             <div class="setting-info">
               <div class="setting-icon-wrap master-icon-wrap">
@@ -114,7 +169,7 @@
             </label>
           </div>
 
-          <!-- 3. Start on Boot -->
+          <!-- 4. Start on Boot -->
           <div class="settings-card">
             <div class="setting-info">
               <div class="setting-icon-wrap">
@@ -136,7 +191,7 @@
             </label>
           </div>
 
-          <!-- 4. Usage & Hardware Tips -->
+          <!-- 5. Usage & Hardware Tips -->
           <div class="help-grid">
             <div class="help-card">
               <div class="help-card-icon">⚙️</div>
@@ -177,7 +232,7 @@
             <span id="settings-app-version" class="settings-about-badge" title="Application Version">v0.1.3</span>
           </div>
 
-          <!-- 4. Quit Application Action -->
+          <!-- 6. Quit Application Action -->
           <div class="settings-bottom-actions">
             <button id="settings-quit-btn" class="settings-quit-btn" type="button" title="Exit application completely">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -190,24 +245,6 @@
           </div>
         </div>
       </section>
-
-      <!-- Monitor Cards List -->
-      <div id="monitor-list" class="monitor-list">
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <p class="loading-text">Loading displays…</p>
-        </div>
-      </div>
-
-      <!-- Error Notification Banner -->
-      <div id="error-banner" class="error-banner" style="display: none;">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <span id="error" class="error-msg"></span>
-      </div>
 
       <!-- Status Footer -->
       <footer class="window-footer">
@@ -224,16 +261,17 @@
       </footer>
     </main>
 
-    <!-- Minimal System Tray Flyout View -->
+    <!-- System Tray Flyout View -->
     <div id="flyout-view" class="tray-container" style="display: none;">
       <header class="tray-header">
         <div class="tray-brand">
-          <svg class="tray-sun-logo" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-          </svg>
+          <div class="tray-brand-icon">
+            <svg class="tray-sun-logo" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+            </svg>
+          </div>
           <span class="tray-title">Brightness</span>
-          <span id="tray-version-badge" class="tray-version-badge" title="Application Version">v0.1.3</span>
         </div>
 
         <div class="tray-actions">
@@ -243,20 +281,20 @@
               <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
             </svg>
           </button>
-          <button id="tray-refresh-btn" class="tray-icon-btn" type="button" title="Rescan displays" aria-label="Rescan">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button id="tray-refresh-btn" class="tray-icon-btn" type="button" title="Rescan displays (F5)" aria-label="Rescan">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
             </svg>
           </button>
           <button id="tray-open-main-btn" class="tray-icon-btn" type="button" title="Open main window" aria-label="Open main window">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15 3 21 3 21 9"></polyline>
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
           </button>
           <button id="tray-quit-btn" class="tray-icon-btn tray-btn-quit" type="button" title="Quit application" aria-label="Quit application">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
