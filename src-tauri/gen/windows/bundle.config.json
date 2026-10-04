@@ -11,14 +11,10 @@
     "fileAssociations": [],
     "protocolHandlers": [],
     "startupTask": {
-      "enabled": true,
+      "enabled": false,
       "taskId": "MultiBrightnessControlStartup"
     },
-    "appExecutionAliases": [
-      {
-        "alias": "MultiBrightnessControl.exe"
-      }
-    ]
+    "appExecutionAliases": []
   },
   "signing": {
     "pfx": null,

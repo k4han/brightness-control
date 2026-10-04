@@ -1,6 +1,6 @@
 [package]
 name = "brightness-control"
-version = "0.1.2"
+version = "0.1.3"
 description = "Lightweight Windows Screen Brightness Control application supporting laptop and external monitors"
 authors = ["k4han"]
 edition = "2021"

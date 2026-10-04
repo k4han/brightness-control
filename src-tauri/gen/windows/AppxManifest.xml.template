@@ -3,9 +3,11 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
-  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 uap10 desktop rescap">
 
   <Identity
     Name="kh4n.MultiBrightnesscontrol"
@@ -42,7 +44,20 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
 
-{{EXTENSIONS}}
+      <Extensions>
+      <desktop:Extension Category="windows.startupTask"
+                         Executable="{{EXECUTABLE}}"
+                         EntryPoint="Windows.FullTrustApplication"
+                         uap10:Parameters="--autostart">
+        <desktop:StartupTask TaskId="MultiBrightnessControlStartup" Enabled="true" DisplayName="{{DISPLAY_NAME}}" />
+      </desktop:Extension>
+
+      <uap3:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="{{EXECUTABLE}}">
+        <uap3:AppExecutionAlias>
+          <desktop:ExecutionAlias Alias="{{EXECUTABLE}}" />
+        </uap3:AppExecutionAlias>
+      </uap3:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
