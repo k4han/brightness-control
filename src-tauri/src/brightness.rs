@@ -25,7 +25,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 /// Brightness percentage range for UI.
 /// Clamped to a minimum floor > 0 to prevent a completely black screen
 /// (which would prevent users from seeing the interface to readjust).
-pub const MIN_BRIGHTNESS_PERCENT: u32 = 10;
+pub const MIN_BRIGHTNESS_PERCENT: u32 = 1;
 pub const MAX_BRIGHTNESS_PERCENT: u32 = 100;
 
 #[derive(Debug, Clone, Serialize)]
@@ -73,7 +73,14 @@ pub fn percent_to_native(percent: u32, min_native: u32, max_native: u32) -> u32 
         return p.min(100);
     }
     let span = max_n - min_native;
-    min_native + ((p as u64 * span as u64 + 50) / 100) as u32
+    let native = min_native + ((p as u64 * span as u64 + 50) / 100) as u32;
+    // On monitors with a small native range, rounding a positive percentage can
+    // otherwise produce 0, which turns the backlight off.
+    if min_native == 0 && p > 0 {
+        native.max(1)
+    } else {
+        native
+    }
 }
 
 /// Converts native monitor value -> UI percentage (0..100).
@@ -1488,6 +1495,13 @@ mod tests {
         assert_eq!(percent_to_native(50, 0, 255), 128);
         assert_eq!(native_to_percent(255, 0, 255), 100);
         assert_eq!(native_to_percent(0, 0, 255), 0);
+    }
+
+    #[test]
+    fn percent_native_positive_floor_never_rounds_to_zero() {
+        // Some DDC/CI monitors expose a small native range. A 1% UI value
+        // must not be rounded to native 0, which turns the backlight off.
+        assert_eq!(percent_to_native(1, 0, 20), 1);
     }
 
     #[test]

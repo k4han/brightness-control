@@ -493,7 +493,7 @@ function updateActivePresetChips(monitorId: string, currentVal: number): void {
 function updateSliderVisual(
   slider: HTMLInputElement | null,
   value: number,
-  min = 10,
+  min = 1,
   max = 100,
 ): void {
   if (!slider) return;
