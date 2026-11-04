@@ -25,7 +25,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 /// Brightness percentage range for UI.
 /// Clamped to a minimum floor > 0 to prevent a completely black screen
 /// (which would prevent users from seeing the interface to readjust).
-pub const MIN_BRIGHTNESS_PERCENT: u32 = 10;
+pub const MIN_BRIGHTNESS_PERCENT: u32 = 1;
 pub const MAX_BRIGHTNESS_PERCENT: u32 = 100;
 
 #[derive(Debug, Clone, Serialize)]

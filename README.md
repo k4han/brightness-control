@@ -29,7 +29,7 @@ A modern, lightweight Windows desktop application built with **Tauri v2**, **Rus
   - Click the system tray icon to reveal a sleek flyout slider panel (styled like Windows 11's native volume flyout).
   - Real-time bidirectional state synchronization between the main window and tray flyout.
 - **Safety & Productivity**:
-  - **Black-Screen Protection**: Enforces a minimum brightness floor (**10%**) to prevent accidental complete blackouts.
+  - **Black-Screen Protection**: Enforces a minimum brightness floor (**1%**) to prevent accidental complete blackouts.
   - **Start with Windows**: Optional background launch on Windows boot directly to the system tray.
   - **Keyboard Shortcuts**: `F5` to rescan displays, `Esc` to minimize to system tray.
 
